@@ -3,6 +3,7 @@ import pandas as pd
 import csv
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import CategoricalNB
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import confusion_matrix, accuracy_score
 from sklearn.naive_bayes import GaussianNB
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
@@ -11,14 +12,15 @@ count_vectorizer = CountVectorizer()
 tfid_vectorizer = TfidfVectorizer()
 CATEGORIES_STOPWORDS = ['./.', ',/,', '[', ']', '(/(', ')/)', '\n', "'/'", "''/''", '``/``', ':/:', ';/:', '--/:', '{/(', '}/)']
 ENGLISH_STOPWORDS = []
-test_size = 0.3
+test_size = 0.2
+n_words = 2
 gc_dataset_filename = 'gc_dataset.csv'
 bow_dataset_filename = 'bow_dataset.csv'
 
 # Feature extraction
 
 
-def gc_extraction(n_words=2):
+def gc_extraction():
     data = []
     with open('interest.acl94.txt') as file:
         lines = file.readlines()
@@ -68,20 +70,27 @@ def load_dataset(filename):
 
 # Naive Bayes
 
-def train_naive_bayes(dataset_filename):
+def naive_bayes(dataset_filename):
     X_train, X_test, y_train, y_test = load_dataset(dataset_filename)
-    nb = CategoricalNB()
+    nb = DecisionTreeClassifier()
     nb.fit(X_train, y_train)
-    print(str(np.shape(X_train)) + ' ' + str(np.shape(X_test)) + ' ' + str(np.shape(y_train)) + ' ' + str(np.shape(y_test)))
     y_pred = nb.predict(X_test)
-    print('Accuracy: ' + str(accuracy_score(y_test, y_pred)))
+    print('NB Accuracy: ' + str(accuracy_score(y_test, y_pred)))
 
 
 # Decision Tree
+
+def decision_tree(dataset_filename):
+    X_train, X_test, y_train, y_test = load_dataset(dataset_filename)
+    dt = CategoricalNB()
+    dt.fit(X_train, y_train)
+    y_pred = dt.predict(X_test)
+    print('DT Accuracy: ' + str(accuracy_score(y_test, y_pred)))
 
 # MultiLayer Perceptron
 
 
 if __name__ == '__main__':
     gc_extraction()
-    train_naive_bayes(gc_dataset_filename)
+    naive_bayes(gc_dataset_filename)
+    decision_tree(gc_dataset_filename)
