@@ -11,7 +11,7 @@ count_vectorizer = CountVectorizer()
 tfid_vectorizer = TfidfVectorizer()
 CATEGORIES_STOPWORDS = ['./.', ',/,', '[', ']', '(/(', ')/)', '\n', "'/'", "''/''", '``/``', ':/:', ';/:', '--/:', '{/(', '}/)']
 ENGLISH_STOPWORDS = []
-test_size = 0.5
+test_size = 0.3
 gc_dataset_filename = 'gc_dataset.csv'
 bow_dataset_filename = 'bow_dataset.csv'
 
@@ -61,7 +61,7 @@ def load_dataset(filename):
     data = pd.read_csv(filename, header=None)
     y = data[0].values
     X = data[1]
-    X = count_vectorizer.fit_transform(X).toarray()
+    X = tfid_vectorizer.fit_transform(X).toarray()
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=0)
     return X_train, X_test, y_train, y_test
 
@@ -71,12 +71,10 @@ def load_dataset(filename):
 def train_naive_bayes(dataset_filename):
     X_train, X_test, y_train, y_test = load_dataset(dataset_filename)
     nb = CategoricalNB()
-    nb.fit(X_test, y_test)
-    print(X_train)
+    nb.fit(X_train, y_train)
     print(str(np.shape(X_train)) + ' ' + str(np.shape(X_test)) + ' ' + str(np.shape(y_train)) + ' ' + str(np.shape(y_test)))
-    y_pred = nb.predict(X_train)
-    print(y_pred)
-    print('Accuracy: ' + str(accuracy_score(y_train, y_pred)))
+    y_pred = nb.predict(X_test)
+    print('Accuracy: ' + str(accuracy_score(y_test, y_pred)))
 
 
 # Decision Tree
