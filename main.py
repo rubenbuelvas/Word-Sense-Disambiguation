@@ -2,20 +2,22 @@ import numpy as np
 import pandas as pd
 import csv
 from sklearn.model_selection import train_test_split
-from sklearn.naive_bayes import CategoricalNB
+from sklearn.naive_bayes import MultinomialNB
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import confusion_matrix, accuracy_score
-from sklearn.naive_bayes import GaussianNB
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.neural_network import MLPClassifier
 
 count_vectorizer = CountVectorizer()
 tfid_vectorizer = TfidfVectorizer()
-CATEGORIES_STOPWORDS = ['./.', ',/,', '[', ']', '(/(', ')/)', '\n', "'/'", "''/''", '``/``', ':/:', ';/:', '--/:', '{/(', '}/)']
+CATEGORIES_STOPWORDS = ['./.', ',/,', '[', ']', '(/(', ')/)', '\n', "'/'", "''/''", '``/``', ':/:', ';/:', '--/:',
+                        '{/(', '}/)']
 ENGLISH_STOPWORDS = []
-test_size = 0.2
+test_size = 0.3
 n_words = 2
 gc_dataset_filename = 'gc_dataset.csv'
 bow_dataset_filename = 'bow_dataset.csv'
+
 
 # Feature extraction
 
@@ -72,7 +74,7 @@ def load_dataset(filename):
 
 def naive_bayes(dataset_filename):
     X_train, X_test, y_train, y_test = load_dataset(dataset_filename)
-    nb = CategoricalNB()
+    nb = MultinomialNB()
     nb.fit(X_train, y_train)
     y_pred = nb.predict(X_test)
     print('NB Accuracy: ' + str(accuracy_score(y_test, y_pred)))
@@ -87,10 +89,19 @@ def decision_tree(dataset_filename):
     y_pred = dt.predict(X_test)
     print('DT Accuracy: ' + str(accuracy_score(y_test, y_pred)))
 
+
 # MultiLayer Perceptron
+
+def multilayer_perceptron(dataset_filename):
+    X_train, X_test, y_train, y_test = load_dataset(dataset_filename)
+    mlp = MLPClassifier(hidden_layer_sizes=(100, 3), random_state=1, max_iter=2000)
+    mlp.fit(X_train, y_train)
+    y_pred = mlp.predict(X_test)
+    print('MLP Accuracy: ' + str(accuracy_score(y_test, y_pred)))
 
 
 if __name__ == '__main__':
     gc_extraction()
     naive_bayes(gc_dataset_filename)
     decision_tree(gc_dataset_filename)
+    multilayer_perceptron(gc_dataset_filename)
