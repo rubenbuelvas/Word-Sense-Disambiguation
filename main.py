@@ -72,7 +72,7 @@ def load_dataset(filename):
 
 def naive_bayes(dataset_filename):
     X_train, X_test, y_train, y_test = load_dataset(dataset_filename)
-    nb = DecisionTreeClassifier()
+    nb = CategoricalNB()
     nb.fit(X_train, y_train)
     y_pred = nb.predict(X_test)
     print('NB Accuracy: ' + str(accuracy_score(y_test, y_pred)))
@@ -82,7 +82,7 @@ def naive_bayes(dataset_filename):
 
 def decision_tree(dataset_filename):
     X_train, X_test, y_train, y_test = load_dataset(dataset_filename)
-    dt = CategoricalNB()
+    dt = DecisionTreeClassifier()
     dt.fit(X_train, y_train)
     y_pred = dt.predict(X_test)
     print('DT Accuracy: ' + str(accuracy_score(y_test, y_pred)))
