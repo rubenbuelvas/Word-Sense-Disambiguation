@@ -8,10 +8,13 @@ from sklearn.metrics import confusion_matrix, accuracy_score
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.neural_network import MLPClassifier
 
+
+# Constants
+
 count_vectorizer = CountVectorizer()
 tfid_vectorizer = TfidfVectorizer()
-CATEGORIES_STOPWORDS = ['./.', ',/,', '[', ']', '(/(', ')/)', '\n', "'/'", "''/''", '``/``', ':/:', ';/:', '--/:',
-                        '{/(', '}/)']
+CATEGORIES_STOPWORDS = ['/.', '/,', '[', ']', '/(', '/)', '\n', "/'", "/''", '/``', '/:']
+CATEGORIES_STOPWORDS_EXTRA = ['/IN']
 ENGLISH_STOPWORDS = []
 test_size = 0.3
 n_words = 2
@@ -21,16 +24,30 @@ bow_dataset_filename = 'bow_dataset.csv'
 
 # Feature extraction
 
-
-def gc_extraction():
+def gc_extraction(stopwords=True, extra_stopwords=False):
     data = []
     with open('interest.acl94.txt') as file:
         lines = file.readlines()
     separator = lines[1]
     lines.remove(separator)
     for line in lines:
+        tmp = []
         line = line.split(' ')
-        line = list(filter(lambda x: x not in CATEGORIES_STOPWORDS, line))
+        if stopwords:
+            for i in range(len(line)):
+                stopword_found = False
+                for stopword in CATEGORIES_STOPWORDS:
+                    if line[i].find(stopword) != -1:
+                        stopword_found = True
+                        break
+                if not stopword_found and extra_stopwords:
+                    for stopword in CATEGORIES_STOPWORDS_EXTRA:
+                        if line[i].find(stopword) != -1:
+                            stopword_found = True
+                            break
+                if not stopword_found:
+                    tmp.append(line[i])
+            line = tmp
         nulls = []
         for _ in range(n_words):
             nulls.append('/VOID')
@@ -99,6 +116,8 @@ def multilayer_perceptron(dataset_filename):
     y_pred = mlp.predict(X_test)
     print('MLP Accuracy: ' + str(accuracy_score(y_test, y_pred)))
 
+
+# Main routine
 
 if __name__ == '__main__':
     gc_extraction()
