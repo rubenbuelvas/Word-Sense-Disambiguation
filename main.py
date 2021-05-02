@@ -111,7 +111,7 @@ def decision_tree(dataset_filename):
 
 def multilayer_perceptron(dataset_filename):
     X_train, X_test, y_train, y_test = load_dataset(dataset_filename)
-    mlp = MLPClassifier(hidden_layer_sizes=(100, 3), random_state=1, max_iter=2000)
+    mlp = MLPClassifier(hidden_layer_sizes=(100, 3), max_iter=2000)
     mlp.fit(X_train, y_train)
     y_pred = mlp.predict(X_test)
     print('MLP Accuracy: ' + str(accuracy_score(y_test, y_pred)))
