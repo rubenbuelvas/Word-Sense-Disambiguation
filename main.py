@@ -257,4 +257,4 @@ if __name__ == '__main__':
     print('BOW')
     run_all_models('bow')
     print('auto')
-    run_all_models('tfidf_auto')
+    run_all_models('AUTO')
