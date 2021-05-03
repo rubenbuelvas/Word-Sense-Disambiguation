@@ -4,7 +4,7 @@ import csv
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import confusion_matrix, accuracy_score
+from sklearn.metrics import confusion_matrix, accuracy_score, f1_score
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.neural_network import MLPClassifier
 from nltk.stem import LancasterStemmer
@@ -17,13 +17,13 @@ count_vectorizer = CountVectorizer()
 tfid_vectorizer = TfidfVectorizer()
 lancaster_stemmer = LancasterStemmer()
 CATEGORIES_STOPWORDS = ['/.', '/,', '[', ']', '/(', '/)', '\n', "/'", "/''", '/``', '/:']
-CATEGORIES_STOPWORDS_EXTRA = ['/IN']
+CATEGORIES_STOPWORDS_EXTRA = ['/IN', '/DT', '/CC']
 PUNCTUATION_STOPWORDS = ['.', ',', '[', ']', '(', ')', '\n', "'", "''", '``', ':', ';', '{', '}']
 ENGLISH_STOPWORDS = []
 test_size = 0.3
-n_words = 2
-gc_dataset_filename = 'gc_dataset.csv'
-bow_dataset_filename = 'bow_dataset.csv'
+n_words = 3
+gc_dataset = 'gc_dataset.csv'
+bow_dataset = 'bow_dataset.csv'
 
 
 # Feature extraction
@@ -33,7 +33,7 @@ def generate_datasets():
     bow_extraction()
 
 
-def gc_extraction(stopwords=True, extra_stopwords=False):
+def gc_extraction(stopwords=True, extra_stopwords=True):
     data = []
     with open('interest.acl94.txt') as file:
         lines = file.readlines()
@@ -72,6 +72,12 @@ def gc_extraction(stopwords=True, extra_stopwords=False):
                 line = line[i - n_words:i + n_words + 1]
                 target_word_found = True
                 break
+            elif line[i].find('interests_') == 0:
+                category = 'C' + line[i][10:11]
+                line = line[i - n_words:i + n_words + 1]
+                line.pop(n_words)
+                target_word_found = True
+                break
         if target_word_found:
             line.pop(n_words)
             for i in range(len(line)):
@@ -92,7 +98,6 @@ def bow_extraction(punctuation_stopwords=True, english_stopwords=True):
     with open('interest-original.txt') as file:
         lines = file.readlines()
     separator = lines[1]
-    print(separator)
     lines.remove(separator)
     for line in lines:
         line = word_tokenize(line)
@@ -116,11 +121,16 @@ def bow_extraction(punctuation_stopwords=True, english_stopwords=True):
                 line.pop(n_words)
                 target_word_found = True
                 break
+            elif line[i].find('interests_') == 0:
+                category = 'C' + line[i][10:11]
+                line = line[i - n_words:i + n_words + 1]
+                line.pop(n_words)
+                target_word_found = True
+                break
             elif not line[i].isalpha():
                 line[i] = 'NUM'
         if target_word_found:
             line.insert(0, category)
-            print(line)
             data.append(line)
     with open('bow_dataset.csv', 'w', newline='') as file:
         writer = csv.writer(file)
@@ -143,7 +153,8 @@ def naive_bayes(dataset_filename):
     nb = MultinomialNB()
     nb.fit(X_train, y_train)
     y_pred = nb.predict(X_test)
-    print('NB Accuracy: ' + str(accuracy_score(y_test, y_pred)))
+    print('NB Accuracy: ' + str('{:.4f}'.format(accuracy_score(y_test, y_pred))))
+    #print('NB F1 Score: ' + str('{:.4f}'.format(f1_score(y_test, y_pred, average='weighted'))))
 
 
 # Decision Tree
@@ -153,23 +164,30 @@ def decision_tree(dataset_filename):
     dt = DecisionTreeClassifier()
     dt.fit(X_train, y_train)
     y_pred = dt.predict(X_test)
-    print('DT Accuracy: ' + str(accuracy_score(y_test, y_pred)))
+    print('DT Accuracy: ' + str('{:.4f}'.format(accuracy_score(y_test, y_pred))))
+    #print('DT F1 Score: ' + str('{:.4f}'.format(f1_score(y_test, y_pred, average='weighted'))))
 
 
 # MultiLayer Perceptron
 
 def multilayer_perceptron(dataset_filename):
     X_train, X_test, y_train, y_test = load_dataset(dataset_filename)
-    mlp = MLPClassifier(hidden_layer_sizes=(100, 3), max_iter=2000)
+    mlp = MLPClassifier(hidden_layer_sizes=(100, 10), max_iter=2000)
     mlp.fit(X_train, y_train)
     y_pred = mlp.predict(X_test)
-    print('MLP Accuracy: ' + str(accuracy_score(y_test, y_pred)))
+    print('MLP Accuracy: ' + str('{:.4f}'.format(accuracy_score(y_test, y_pred))))
+    #print('MLP F1 Score: ' + str('{:.4f}'.format(f1_score(y_test, y_pred, average='weighted'))))
 
 
 # Main routine
 
 if __name__ == '__main__':
     generate_datasets()
-    #naive_bayes(gc_dataset_filename)
-    #decision_tree(gc_dataset_filename)
-    #multilayer_perceptron(gc_dataset_filename)
+    print('GC')
+    naive_bayes(gc_dataset)
+    decision_tree(gc_dataset)
+    multilayer_perceptron(gc_dataset)
+    print('BOW')
+    naive_bayes(bow_dataset)
+    decision_tree(bow_dataset)
+    multilayer_perceptron(bow_dataset)
