@@ -7,14 +7,18 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import confusion_matrix, accuracy_score
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.neural_network import MLPClassifier
-
+from nltk.stem import LancasterStemmer
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
 
 # Constants
 
 count_vectorizer = CountVectorizer()
 tfid_vectorizer = TfidfVectorizer()
+lancaster_stemmer = LancasterStemmer()
 CATEGORIES_STOPWORDS = ['/.', '/,', '[', ']', '/(', '/)', '\n', "/'", "/''", '/``', '/:']
 CATEGORIES_STOPWORDS_EXTRA = ['/IN']
+PUNCTUATION_STOPWORDS = ['.', ',', '[', ']', '(', ')', '\n', "'", "''", '``', ':', ';', '{', '}']
 ENGLISH_STOPWORDS = []
 test_size = 0.3
 n_words = 2
@@ -23,6 +27,11 @@ bow_dataset_filename = 'bow_dataset.csv'
 
 
 # Feature extraction
+
+def generate_datasets():
+    gc_extraction()
+    bow_extraction()
+
 
 def gc_extraction(stopwords=True, extra_stopwords=False):
     data = []
@@ -33,6 +42,10 @@ def gc_extraction(stopwords=True, extra_stopwords=False):
     for line in lines:
         tmp = []
         line = line.split(' ')
+        try:
+            line.remove('======================================')
+        except:
+            pass
         if stopwords:
             for i in range(len(line)):
                 stopword_found = False
@@ -66,7 +79,7 @@ def gc_extraction(stopwords=True, extra_stopwords=False):
                     line[i] = line[i].split('/')[1]
                 except:
                     line[i] = 'VOID'
-            line = [' '.join(line)]
+            # line = [' '.join(line)]
             line.insert(0, category)
             data.append(line)
     with open('gc_dataset.csv', 'w', newline='') as file:
@@ -74,8 +87,44 @@ def gc_extraction(stopwords=True, extra_stopwords=False):
         writer.writerows(data)
 
 
-def bow_extraction():
-    pass
+def bow_extraction(punctuation_stopwords=True, english_stopwords=True):
+    data = []
+    with open('interest-original.txt') as file:
+        lines = file.readlines()
+    separator = lines[1]
+    print(separator)
+    lines.remove(separator)
+    for line in lines:
+        line = word_tokenize(line)
+        try:
+            line.remove('======================================')
+        except:
+            pass
+        for i in range(len(line)):
+            line[i] = lancaster_stemmer.stem(line[i])
+        if punctuation_stopwords:
+            line = list(filter(lambda x: x not in PUNCTUATION_STOPWORDS, line))
+        nulls = []
+        for _ in range(n_words):
+            nulls.append('VOID')
+        line = nulls + line + nulls
+        target_word_found = False
+        for i in range(len(line)):
+            if line[i].find('interest_') == 0:
+                category = 'C' + line[i][9:10]
+                line = line[i - n_words:i + n_words + 1]
+                line.pop(n_words)
+                target_word_found = True
+                break
+            elif not line[i].isalpha():
+                line[i] = 'NUM'
+        if target_word_found:
+            line.insert(0, category)
+            print(line)
+            data.append(line)
+    with open('bow_dataset.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerows(data)
 
 
 def load_dataset(filename):
@@ -120,7 +169,7 @@ def multilayer_perceptron(dataset_filename):
 # Main routine
 
 if __name__ == '__main__':
-    gc_extraction()
-    naive_bayes(gc_dataset_filename)
-    decision_tree(gc_dataset_filename)
-    multilayer_perceptron(gc_dataset_filename)
+    generate_datasets()
+    #naive_bayes(gc_dataset_filename)
+    #decision_tree(gc_dataset_filename)
+    #multilayer_perceptron(gc_dataset_filename)
