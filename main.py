@@ -31,7 +31,7 @@ TRAIN_CONFIG = {
         'filename': 'bow_dataset.csv',
     },
     'tfidf_auto': {
-
+        'filename': 'ws_dataset.csv'
     },
     'custom': {
 
@@ -43,9 +43,10 @@ TRAIN_CONFIG = {
 def generate_datasets():
     gc_extraction()
     bow_extraction()
+    whole_sentence_extraction()
 
 
-# Grammatical classification
+# Grammatical classification extraction
 
 def gc_extraction(stopwords=True, extra_stopwords=True):
     data = []
@@ -107,7 +108,7 @@ def gc_extraction(stopwords=True, extra_stopwords=True):
         writer.writerows(data)
 
 
-# Bag of words
+# Bag of words extraction
 
 def bow_extraction(punctuation_stopwords=True, english_stopwords=True):
     data = []
@@ -155,8 +156,8 @@ def bow_extraction(punctuation_stopwords=True, english_stopwords=True):
 
 # TF-IDF feature extraction
 
-def tfidf_auto_extraction(english_stopwords=True):
-    y = []
+def whole_sentence_extraction():
+    data = []
     with open('interest-original.txt') as file:
         lines = file.readlines()
     separator = lines[1]
@@ -167,15 +168,21 @@ def tfidf_auto_extraction(english_stopwords=True):
         target_word_found = False
         for i in range(len(tk_line)):
             if tk_line[i].find('interest_') == 0:
-                y.append('C' + tk_line[i][9:10])
+                category = 'C' + tk_line[i][9:10]
                 line = line.replace(tk_line[i], 'interest')
+                target_word_found = True
                 break
             elif tk_line[i].find('interests_') == 0:
-                y.append('C' + tk_line[i][10:11])
+                category = 'C' + tk_line[i][10:11]
                 line = line.replace(tk_line[i], 'interests')
+                target_word_found = True
                 break
-    with open('tfidf_dataset.csv', 'w', newline='') as file:
+        if target_word_found:
+            line = [category, line]
+            data.append(line)
+    with open('ws_dataset.csv', 'w', newline='') as file:
         writer = csv.writer(file)
+        writer.writerows(data)
 
 
 # TF-IDF + GC
@@ -249,4 +256,5 @@ if __name__ == '__main__':
     run_all_models('gc')
     print('BOW')
     run_all_models('bow')
-    tfidf_auto_extraction()
+    print('auto')
+    run_all_models('tfidf_auto')
