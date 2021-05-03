@@ -10,11 +10,10 @@ from sklearn.neural_network import MLPClassifier
 from nltk.stem import LancasterStemmer
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
+from sklearn.model_selection import cross_validate
 
 # Constants
 
-count_vectorizer = CountVectorizer()
-tfid_vectorizer = TfidfVectorizer()
 lancaster_stemmer = LancasterStemmer()
 CATEGORIES_STOPWORDS = ['/.', '/,', '[', ']', '/(', '/)', '\n', "/'", "/''", '/``', '/:']
 CATEGORIES_STOPWORDS_EXTRA = ['/IN', '/DT', '/CC']
@@ -22,9 +21,22 @@ PUNCTUATION_STOPWORDS = ['.', ',', '[', ']', '(', ')', '\n', "'", "''", '``', ':
 ENGLISH_STOPWORDS = []
 test_size = 0.3
 n_words = 3
-gc_dataset = 'gc_dataset.csv'
-bow_dataset = 'bow_dataset.csv'
 
+TRAIN_CONFIG = {
+    'stopwords': 'all',  # ['all', 'punctuation', 'none']
+    'gc': {
+        'filename': 'gc_dataset.csv',
+    },
+    'bow': {
+        'filename': 'bow_dataset.csv',
+    },
+    'tfidf_auto': {
+
+    },
+    'custom': {
+
+    }
+}
 
 # Feature extraction
 
@@ -32,6 +44,8 @@ def generate_datasets():
     gc_extraction()
     bow_extraction()
 
+
+# Grammatical classification
 
 def gc_extraction(stopwords=True, extra_stopwords=True):
     data = []
@@ -85,13 +99,15 @@ def gc_extraction(stopwords=True, extra_stopwords=True):
                     line[i] = line[i].split('/')[1]
                 except:
                     line[i] = 'VOID'
-            # line = [' '.join(line)]
+            line = [' '.join(line)]
             line.insert(0, category)
             data.append(line)
     with open('gc_dataset.csv', 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerows(data)
 
+
+# Bag of words
 
 def bow_extraction(punctuation_stopwords=True, english_stopwords=True):
     data = []
@@ -137,46 +153,92 @@ def bow_extraction(punctuation_stopwords=True, english_stopwords=True):
         writer.writerows(data)
 
 
-def load_dataset(filename):
-    data = pd.read_csv(filename, header=None)
+# TF-IDF feature extraction
+
+def tfidf_auto_extraction(english_stopwords=True):
+    y = []
+    with open('interest-original.txt') as file:
+        lines = file.readlines()
+    separator = lines[1]
+    lines.remove(separator)
+    for line in lines:
+        line = line.replace('======================================', '')
+        tk_line = word_tokenize(line)
+        target_word_found = False
+        for i in range(len(tk_line)):
+            if tk_line[i].find('interest_') == 0:
+                y.append('C' + tk_line[i][9:10])
+                line = line.replace(tk_line[i], 'interest')
+                break
+            elif tk_line[i].find('interests_') == 0:
+                y.append('C' + tk_line[i][10:11])
+                line = line.replace(tk_line[i], 'interests')
+                break
+    with open('tfidf_dataset.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+
+
+# TF-IDF + GC
+
+def tfidf_gc_extraction():
+    pass
+
+
+# Test routine
+
+def run_all_models(dataset):
+    stopwords = TRAIN_CONFIG.get('stopwords')
+    config = TRAIN_CONFIG.get(dataset)
+    data = pd.read_csv(config.get('filename'), header=None)
     y = data[0].values
     X = data[1]
-    X = tfid_vectorizer.fit_transform(X).toarray()
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=0)
-    return X_train, X_test, y_train, y_test
+    if dataset == 'tfidf_auto':
+        vectorizer = TfidfVectorizer(stop_words='english')
+    else:
+        vectorizer = TfidfVectorizer()
+    X = vectorizer.fit_transform(X)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=1)
+    acc, f1 = naive_bayes(X_train, X_test, y_train, y_test)
+    print('NB Accuracy: ' + str('{:.4f}'.format(acc)))
+    acc, f1 = decision_tree(X_train, X_test, y_train, y_test)
+    print('DT Accuracy: ' + str('{:.4f}'.format(acc)))
+    acc, f1 = multilayer_perceptron(X_train, X_test, y_train, y_test)
+    print('MLP Accuracy: ' + str('{:.4f}'.format(acc)))
+
+
+def find_optimal_dt(dataset):
+    pass
+
+
+def find_optimal_mlp(dataset):
+    pass
 
 
 # Naive Bayes
 
-def naive_bayes(dataset_filename):
-    X_train, X_test, y_train, y_test = load_dataset(dataset_filename)
+def naive_bayes(X_train, X_test, y_train, y_test):
     nb = MultinomialNB()
     nb.fit(X_train, y_train)
     y_pred = nb.predict(X_test)
-    print('NB Accuracy: ' + str('{:.4f}'.format(accuracy_score(y_test, y_pred))))
-    #print('NB F1 Score: ' + str('{:.4f}'.format(f1_score(y_test, y_pred, average='weighted'))))
+    return accuracy_score(y_test, y_pred), f1_score(y_test, y_pred, average='macro')
 
 
 # Decision Tree
 
-def decision_tree(dataset_filename):
-    X_train, X_test, y_train, y_test = load_dataset(dataset_filename)
+def decision_tree(X_train, X_test, y_train, y_test, depth=-1):
     dt = DecisionTreeClassifier()
     dt.fit(X_train, y_train)
     y_pred = dt.predict(X_test)
-    print('DT Accuracy: ' + str('{:.4f}'.format(accuracy_score(y_test, y_pred))))
-    #print('DT F1 Score: ' + str('{:.4f}'.format(f1_score(y_test, y_pred, average='weighted'))))
+    return accuracy_score(y_test, y_pred), f1_score(y_test, y_pred, average='macro')
 
 
 # MultiLayer Perceptron
 
-def multilayer_perceptron(dataset_filename):
-    X_train, X_test, y_train, y_test = load_dataset(dataset_filename)
-    mlp = MLPClassifier(hidden_layer_sizes=(100, 10), max_iter=2000)
+def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes=(100, 10)):
+    mlp = MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, max_iter=2000)
     mlp.fit(X_train, y_train)
     y_pred = mlp.predict(X_test)
-    print('MLP Accuracy: ' + str('{:.4f}'.format(accuracy_score(y_test, y_pred))))
-    #print('MLP F1 Score: ' + str('{:.4f}'.format(f1_score(y_test, y_pred, average='weighted'))))
+    return accuracy_score(y_test, y_pred), f1_score(y_test, y_pred, average='macro')
 
 
 # Main routine
@@ -184,10 +246,7 @@ def multilayer_perceptron(dataset_filename):
 if __name__ == '__main__':
     generate_datasets()
     print('GC')
-    naive_bayes(gc_dataset)
-    decision_tree(gc_dataset)
-    multilayer_perceptron(gc_dataset)
+    run_all_models('gc')
     print('BOW')
-    naive_bayes(bow_dataset)
-    decision_tree(bow_dataset)
-    multilayer_perceptron(bow_dataset)
+    run_all_models('bow')
+    tfidf_auto_extraction()
