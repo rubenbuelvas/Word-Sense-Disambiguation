@@ -9,6 +9,7 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.neural_network import MLPClassifier
 from nltk.stem import LancasterStemmer
 from nltk.tokenize import word_tokenize
+from openpyxl import Workbook
 from nltk.corpus import stopwords
 from sklearn.model_selection import cross_validate
 
@@ -20,12 +21,15 @@ CATEGORIES_STOPWORDS_EXTRA = ['/IN', '/DT', '/CC']
 PUNCTUATION_STOPWORDS = ['.', ',', '[', ']', '(', ')', '\n', "'", "''", '``', ':', ';', '{', '}']
 ENGLISH_STOPWORDS = []
 test_size = 0.3
-n_words = 3
+n_words = 2
 
-TRAIN_CONFIG = {
+DATASETS = ['gc', 'nw', 'ws']
+
+CONFIG = {
     'stopwords': 'all',  # ['all', 'punctuation', 'none']
     'gc': {
         'filename': 'gc_dataset.csv',
+        'vectorizer': 'count',  # ['count', 'tfidf']
         'mlp': {
             'solver': 'lbfgs',  # ['lbfgs', 'sgd', 'adam']
             'hidden_layer_sizes': (100,)
@@ -34,8 +38,9 @@ TRAIN_CONFIG = {
             'depth': 100
         }
     },
-    'bow': {
-        'filename': 'bow_dataset.csv',
+    'nw': {
+        'filename': 'nw_dataset.csv',
+        'vectorizer': 'count',  # ['count', 'tfidf']
         'mlp': {
             'solver': 'lbfgs',  # ['lbfgs', 'sgd', 'adam']
             'hidden_layer_sizes': (100,)
@@ -44,8 +49,9 @@ TRAIN_CONFIG = {
             'depth': 100
         }
     },
-    'tfidf_auto': {
+    'ws': {
         'filename': 'ws_dataset.csv',
+        'vectorizer': 'count',  # ['count', 'tfidf']
         'mlp': {
             'solver': 'lbfgs',  # ['lbfgs', 'sgd', 'adam']
             'hidden_layer_sizes': (100,)
@@ -64,13 +70,13 @@ TRAIN_CONFIG = {
 
 def generate_datasets():
     gc_extraction()
-    bow_extraction()
+    nw_extraction()
     whole_sentence_extraction()
 
 
 # Grammatical classification extraction
 
-def gc_extraction(stopwords=True, extra_stopwords=True):
+def gc_extraction(stopwords=True, extra_stopwords=False):
     data = []
     with open('interest.acl94.txt') as file:
         lines = file.readlines()
@@ -125,14 +131,15 @@ def gc_extraction(stopwords=True, extra_stopwords=True):
             line = [' '.join(line)]
             line.insert(0, category)
             data.append(line)
-    with open('gc_dataset.csv', 'w', newline='') as file:
+    with open(CONFIG['gc']['filename'], 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerows(data)
+    print(CONFIG['gc']['filename'] + ' generated')
 
 
-# Bag of words extraction
+# Natural words extraction
 
-def bow_extraction(punctuation_stopwords=True, english_stopwords=True):
+def nw_extraction(punctuation_stopwords=True):
     data = []
     with open('interest-original.txt') as file:
         lines = file.readlines()
@@ -171,9 +178,10 @@ def bow_extraction(punctuation_stopwords=True, english_stopwords=True):
         if target_word_found:
             line.insert(0, category)
             data.append(line)
-    with open('bow_dataset.csv', 'w', newline='') as file:
+    with open(CONFIG['nw']['filename'], 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerows(data)
+    print(CONFIG['nw']['filename'] + ' generated')
 
 
 # TF-IDF feature extraction
@@ -202,9 +210,10 @@ def whole_sentence_extraction():
         if target_word_found:
             line = [category, line]
             data.append(line)
-    with open('ws_dataset.csv', 'w', newline='') as file:
+    with open(CONFIG['ws']['filename'], 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerows(data)
+    print(CONFIG['ws']['filename'] + ' generated')
 
 
 # TF-IDF + GC
@@ -216,30 +225,55 @@ def tfidf_gc_extraction():
 # Test routine
 
 def run_all_models(dataset):
-    stopwords = TRAIN_CONFIG['stopwords']
-    config = TRAIN_CONFIG[dataset]
-    data = pd.read_csv(config['filename'], header=None)
+    stopwords = CONFIG['stopwords']
+    data = pd.read_csv(CONFIG[dataset]['filename'], header=None)
     y = data[0].values
     X = data[1]
-    if dataset == 'tfidf_auto':
-        vectorizer = TfidfVectorizer(stop_words='english')
+    if CONFIG[dataset]['vectorizer'] == 'count':
+        vectorizer = CountVectorizer(stop_words='english')
     else:
-        vectorizer = TfidfVectorizer()
+        vectorizer = TfidfVectorizer(stop_words='english')
     X = vectorizer.fit_transform(X)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=1)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=0)
     acc, f1 = naive_bayes(X_train, X_test, y_train, y_test)
     print('NB Accuracy: ' + str('{:.4f}'.format(acc)))
-    acc, f1 = decision_tree(X_train, X_test, y_train, y_test, config['dt']['depth'])
+    acc, f1 = decision_tree(X_train, X_test, y_train, y_test, CONFIG[dataset]['dt']['depth'])
     print('DT Accuracy: ' + str('{:.4f}'.format(acc)))
-    acc, f1 = multilayer_perceptron(X_train, X_test, y_train, y_test, config['mlp']['hidden_layer_sizes'])
+    acc, f1 = multilayer_perceptron(X_train, X_test, y_train, y_test, CONFIG[dataset]['mlp']['hidden_layer_sizes'])
     print('MLP Accuracy: ' + str('{:.4f}'.format(acc)))
 
 
-def find_optimal_dt_settings(dataset):
-    pass
+def test_dt_config(depth_range=(1, 40)):
+    wb = Workbook()
+    ws = wb.active
+    current_row = 2
+    for current_depth in range(depth_range[0], depth_range[1]+1):
+        ws.cell(column=1, row=current_row, value=current_depth)
+        current_row += 1
+    current_column = 2
+    for dataset in DATASETS:
+        data = pd.read_csv(CONFIG[dataset]['filename'], header=None)
+        y = data[0].values
+        X = data[1]
+        if CONFIG[dataset]['vectorizer'] == 'count':
+            vectorizer = CountVectorizer(stop_words='english')
+        else:
+            vectorizer = TfidfVectorizer(stop_words='english')
+        X = vectorizer.fit_transform(X)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=0)
+        ws.cell(column=current_column, row=1, value=dataset)
+        current_row = 2
+        for current_depth in range(depth_range[0], depth_range[1]+1):
+            acc, f1 = decision_tree(X_train, X_test, y_train, y_test, current_depth)
+            ws.cell(column=current_column, row=current_row, value=current_depth)
+            ws.cell(column=current_column, row=current_row, value=acc)
+            current_row += 1
+        current_column += 1
+    wb.save(filename='dt_depth_test.xlsx')
+    print('dt_depth_test.xlsx generated')
 
 
-def find_optimal_mlp_settings(dataset):
+def test_mlp_config(dataset):
     pass
 
 
@@ -255,7 +289,7 @@ def naive_bayes(X_train, X_test, y_train, y_test):
 # Decision Tree
 
 def decision_tree(X_train, X_test, y_train, y_test, depth):
-    dt = DecisionTreeClassifier()
+    dt = DecisionTreeClassifier(max_depth=depth)
     dt.fit(X_train, y_train)
     y_pred = dt.predict(X_test)
     return accuracy_score(y_test, y_pred), f1_score(y_test, y_pred, average='macro')
@@ -273,10 +307,11 @@ def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes):
 # Main routine
 
 if __name__ == '__main__':
-    generate_datasets()
+    #generate_datasets()
+    test_dt_config()
+    print('BOW')
+    run_all_models('nw')
     print('GC')
     run_all_models('gc')
-    print('BOW')
-    run_all_models('bow')
     print('auto')
-    run_all_models('tfidf_auto')
+    run_all_models('ws')
