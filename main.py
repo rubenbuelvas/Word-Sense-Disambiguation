@@ -66,6 +66,31 @@ CONFIG = {
 }
 
 
+# Utilities
+
+# Print iterations progress
+def print_progress_bar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', printEnd="\r"):
+    """
+    Call in a loop to create terminal progress bar
+    @params:
+        iteration   - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : positive number of decimals in percent complete (Int)
+        length      - Optional  : character length of bar (Int)
+        fill        - Optional  : bar fill character (Str)
+        printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end=printEnd)
+    # Print New Line on Complete
+    if iteration == total:
+        print()
+
+
 # Feature extraction
 
 def generate_datasets():
@@ -247,7 +272,7 @@ def test_dt_config(depth_range=(1, 40)):
     wb = Workbook()
     ws = wb.active
     current_row = 2
-    for current_depth in range(depth_range[0], depth_range[1]+1):
+    for current_depth in range(depth_range[0], depth_range[1] + 1):
         ws.cell(column=1, row=current_row, value=current_depth)
         current_row += 1
     current_column = 2
@@ -263,18 +288,53 @@ def test_dt_config(depth_range=(1, 40)):
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=0)
         ws.cell(column=current_column, row=1, value=dataset)
         current_row = 2
-        for current_depth in range(depth_range[0], depth_range[1]+1):
+        for current_depth in range(depth_range[0], depth_range[1] + 1):
             acc, f1 = decision_tree(X_train, X_test, y_train, y_test, current_depth)
             ws.cell(column=current_column, row=current_row, value=current_depth)
-            ws.cell(column=current_column, row=current_row, value=acc)
+            ws.cell(column=current_column, row=current_row, value=1 - acc)
             current_row += 1
         current_column += 1
     wb.save(filename='dt_depth_test.xlsx')
     print('dt_depth_test.xlsx generated')
 
 
-def test_mlp_config(dataset):
-    pass
+def test_mlp_config(hidden_layer_range=((1, 1), (100, 5))):
+    wb = Workbook()
+    ws = wb.active
+    current_row = 2
+    for current_layer_size in range(hidden_layer_range[0][0], hidden_layer_range[1][0] + 1):
+        ws.cell(column=1, row=current_row, value=current_layer_size)
+        current_row += 1
+    current_column = 2
+    for dataset in DATASETS:
+        print('Training with ' + dataset)
+        i = 0
+        l = len(range(hidden_layer_range[0][1], hidden_layer_range[1][1]))*len(range(hidden_layer_range[0][0], int(hidden_layer_range[1][0] / 10) + 1))
+        for current_net_depth in range(hidden_layer_range[0][1], hidden_layer_range[1][1]):
+            print_progress_bar(i + 1, l, prefix='Progress:', suffix='Complete', length=50)
+            data = pd.read_csv(CONFIG[dataset]['filename'], header=None)
+            y = data[0].values
+            X = data[1]
+            if CONFIG[dataset]['vectorizer'] == 'count':
+                vectorizer = CountVectorizer(stop_words='english')
+            else:
+                vectorizer = TfidfVectorizer(stop_words='english')
+            X = vectorizer.fit_transform(X)
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=0)
+            ws.cell(column=current_column, row=1, value=dataset + ' d=' + str(current_net_depth))
+            current_row = 2
+            for current_layer_size in range(hidden_layer_range[0][0], int(hidden_layer_range[1][0] / 10) + 1):
+                acc, f1 = multilayer_perceptron(
+                    X_train, X_test, y_train, y_test, hidden_layer_sizes=[current_layer_size * 10, current_net_depth]
+                )
+                ws.cell(column=current_column, row=current_row, value=current_layer_size)
+                ws.cell(column=current_column, row=current_row, value=1 - acc)
+                current_row += 1
+                i += 1
+                print_progress_bar(i + 1, l, prefix='Progress:', suffix='Complete', length=50)
+            current_column += 1
+    wb.save(filename='dt_depth_test.xlsx')
+    print('dt_depth_test.xlsx generated')
 
 
 # Naive Bayes
@@ -307,8 +367,9 @@ def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes):
 # Main routine
 
 if __name__ == '__main__':
-    #generate_datasets()
+    # generate_datasets()
     test_dt_config()
+    test_mlp_config()
     print('BOW')
     run_all_models('nw')
     print('GC')
