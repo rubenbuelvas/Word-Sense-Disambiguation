@@ -26,17 +26,39 @@ TRAIN_CONFIG = {
     'stopwords': 'all',  # ['all', 'punctuation', 'none']
     'gc': {
         'filename': 'gc_dataset.csv',
+        'mlp': {
+            'solver': 'lbfgs',  # ['lbfgs', 'sgd', 'adam']
+            'hidden_layer_sizes': (100,)
+        },
+        'dt': {
+            'depth': 100
+        }
     },
     'bow': {
         'filename': 'bow_dataset.csv',
+        'mlp': {
+            'solver': 'lbfgs',  # ['lbfgs', 'sgd', 'adam']
+            'hidden_layer_sizes': (100,)
+        },
+        'dt': {
+            'depth': 100
+        }
     },
     'tfidf_auto': {
-        'filename': 'ws_dataset.csv'
+        'filename': 'ws_dataset.csv',
+        'mlp': {
+            'solver': 'lbfgs',  # ['lbfgs', 'sgd', 'adam']
+            'hidden_layer_sizes': (100,)
+        },
+        'dt': {
+            'depth': 100
+        }
     },
     'custom': {
 
     }
 }
+
 
 # Feature extraction
 
@@ -194,9 +216,9 @@ def tfidf_gc_extraction():
 # Test routine
 
 def run_all_models(dataset):
-    stopwords = TRAIN_CONFIG.get('stopwords')
-    config = TRAIN_CONFIG.get(dataset)
-    data = pd.read_csv(config.get('filename'), header=None)
+    stopwords = TRAIN_CONFIG['stopwords']
+    config = TRAIN_CONFIG[dataset]
+    data = pd.read_csv(config['filename'], header=None)
     y = data[0].values
     X = data[1]
     if dataset == 'tfidf_auto':
@@ -207,17 +229,17 @@ def run_all_models(dataset):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=1)
     acc, f1 = naive_bayes(X_train, X_test, y_train, y_test)
     print('NB Accuracy: ' + str('{:.4f}'.format(acc)))
-    acc, f1 = decision_tree(X_train, X_test, y_train, y_test)
+    acc, f1 = decision_tree(X_train, X_test, y_train, y_test, config['dt']['depth'])
     print('DT Accuracy: ' + str('{:.4f}'.format(acc)))
-    acc, f1 = multilayer_perceptron(X_train, X_test, y_train, y_test)
+    acc, f1 = multilayer_perceptron(X_train, X_test, y_train, y_test, config['mlp']['hidden_layer_sizes'])
     print('MLP Accuracy: ' + str('{:.4f}'.format(acc)))
 
 
-def find_optimal_dt(dataset):
+def find_optimal_dt_settings(dataset):
     pass
 
 
-def find_optimal_mlp(dataset):
+def find_optimal_mlp_settings(dataset):
     pass
 
 
@@ -232,7 +254,7 @@ def naive_bayes(X_train, X_test, y_train, y_test):
 
 # Decision Tree
 
-def decision_tree(X_train, X_test, y_train, y_test, depth=-1):
+def decision_tree(X_train, X_test, y_train, y_test, depth):
     dt = DecisionTreeClassifier()
     dt.fit(X_train, y_train)
     y_pred = dt.predict(X_test)
@@ -241,7 +263,7 @@ def decision_tree(X_train, X_test, y_train, y_test, depth=-1):
 
 # MultiLayer Perceptron
 
-def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes=(100, 10)):
+def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes):
     mlp = MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, max_iter=2000)
     mlp.fit(X_train, y_train)
     y_pred = mlp.predict(X_test)
@@ -257,4 +279,4 @@ if __name__ == '__main__':
     print('BOW')
     run_all_models('bow')
     print('auto')
-    run_all_models('AUTO')
+    run_all_models('tfidf_auto')
