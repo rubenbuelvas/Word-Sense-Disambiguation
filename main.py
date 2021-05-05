@@ -460,5 +460,17 @@ def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes, 
 # Main routine
 
 if __name__ == '__main__':
-    generate_datasets()
-    test_dt_config()
+    args = sys.argv[1:]
+    if args[0] == 'generate_datasets':
+        generate_datasets()
+    elif args[0] == 'test_mlp_config':
+        if len(args) == 1:
+            test_mlp_config()
+        else:
+            test_mlp_config(selected_dataset=args[1])
+    elif args[0] == 'test_dt_config':
+        test_dt_config()
+    elif args[0] == 'run_model':
+        run_models(model=args[1], dataset=args[2])
+    elif args[0] == 'run_all_models':
+        run_models()
