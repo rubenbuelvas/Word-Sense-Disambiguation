@@ -18,7 +18,7 @@ from sklearn.model_selection import cross_validate
 lancaster_stemmer = LancasterStemmer()
 CATEGORIES_STOPWORDS = ['/.', '/,', '[', ']', '/(', '/)', '\n', "/'", "/''", '/``', '/:']
 CATEGORIES_STOPWORDS_EXTRA = ['/IN', '/DT', '/CC']
-PUNCTUATION_STOPWORDS = ['.', ',', '[', ']', '(', ')', '\n', "'", "''", '``', ':', ';', '{', '}']
+PUNCTUATION_STOPWORDS = ['.', ',', '[', ']', '(', ')', '\n', "'", "''", '``', ':', ';', '{', '}', '"']
 ENGLISH_STOPWORDS = []
 test_size = 0.3
 
@@ -160,6 +160,7 @@ def gc_extraction(stopwords=True, extra_stopwords=True, custom_n_words=None):
                 except:
                     line[i] = 'VOID'
             line = ' '.join(line)
+            line = line.replace('VOID', '')
             line = [category, line]
             data.append(line)
     with open(CONFIG['gc']['filename'], 'w', newline='') as file:
@@ -212,6 +213,7 @@ def nw_extraction(punctuation_stopwords=False, custom_n_words=None):
                 line[i] = 'NUM'
         if target_word_found:
             line = ' '.join(line)
+            line = line.replace('VOID', '')
             line = [category, line]
             data.append(line)
     with open(CONFIG['nw']['filename'], 'w', newline='') as file:
@@ -222,7 +224,7 @@ def nw_extraction(punctuation_stopwords=False, custom_n_words=None):
 
 # TF-IDF feature extraction
 
-def whole_sentence_extraction():
+def whole_sentence_extraction(punctuation_stopwords=True):
     data = []
     with open('interest-original.txt') as file:
         lines = file.readlines()
@@ -232,6 +234,9 @@ def whole_sentence_extraction():
         line = line.replace('======================================', '')
         tk_line = word_tokenize(line)
         target_word_found = False
+        if punctuation_stopwords:
+            for stopword in PUNCTUATION_STOPWORDS:
+                line = line.replace(stopword, '')
         for i in range(len(tk_line)):
             if tk_line[i].find('interest_') == 0:
                 category = 'C' + tk_line[i][9:10]
@@ -286,10 +291,12 @@ def run_models(model=None, dataset=None):
                 acc, f1 = naive_bayes(X_train, X_test, y_train, y_test)
                 print('NB Accuracy: ' + str('{:.4f}'.format(acc)))
             elif current_model == 'dt':
-                acc, f1 = decision_tree(X_train, X_test, y_train, y_test, CONFIG[dataset]['dt']['depth'])
+                acc, f1 = decision_tree(X_train, X_test, y_train, y_test, CONFIG[current_dataset]['dt']['depth'])
                 print('DT Accuracy: ' + str('{:.4f}'.format(acc)))
             elif current_model == 'mlp':
-                acc, f1 = multilayer_perceptron(X_train, X_test, y_train, y_test, CONFIG[dataset]['mlp']['hidden_layer_sizes'])
+                acc, f1 = multilayer_perceptron(
+                    X_train, X_test, y_train, y_test, CONFIG[dataset]['mlp']['hidden_layer_sizes'], solver=CONFIG[current_dataset]['mlp']['solver']
+                )
                 print('MLP Accuracy: ' + str('{:.4f}'.format(acc)))
 
 
@@ -398,8 +405,8 @@ def decision_tree(X_train, X_test, y_train, y_test, depth):
 
 # MultiLayer Perceptron
 
-def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes):
-    mlp = MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, max_iter=2000)
+def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes, solver):
+    mlp = MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, max_iter=2000, solver=solver)
     mlp.fit(X_train, y_train)
     y_pred = mlp.predict(X_test)
     return accuracy_score(y_test, y_pred), f1_score(y_test, y_pred, average='macro')
@@ -408,4 +415,5 @@ def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes):
 # Main routine
 
 if __name__ == '__main__':
+    generate_datasets()
     test_n_words()
