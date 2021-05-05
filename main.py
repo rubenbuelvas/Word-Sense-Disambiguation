@@ -339,7 +339,7 @@ def run_models(model=None, dataset=None):
                 acc, f1 = multilayer_perceptron(
                     X_train, X_test, y_train, y_test, CONFIG[current_dataset]['mlp']['hidden_layer_sizes'],
                     solver=CONFIG[current_dataset]['mlp']['solver'],
-                    current_dataset
+                    dataset=current_dataset
                 )
                 print('MLP Accuracy: ' + str('{:.4f}'.format(acc)))
 
@@ -452,10 +452,10 @@ def decision_tree(X_train, X_test, y_train, y_test, depth):
 
 # MultiLayer Perceptron
 
-def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes, solver, current_dataset):
-    if current_dataset is not None:
+def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes, solver, dataset):
+    if dataset is not None:
         try:
-            mlp = load(current_dataset + 'mlp_wights.joblib')
+            mlp = load(dataset + 'mlp_wights.joblib')
             y_pred = mlp.predict(X_test)
         except:
             mlp = MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, max_iter=2000, solver=solver)
