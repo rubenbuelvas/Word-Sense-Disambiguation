@@ -13,6 +13,7 @@ from nltk.tokenize import word_tokenize
 from openpyxl import Workbook
 from nltk.corpus import stopwords
 from sklearn.model_selection import cross_validate
+from joblib import dump, load
 
 # Constants
 
@@ -38,7 +39,7 @@ CONFIG = {
             'hidden_layer_sizes': (80, 3)
         },
         'dt': {
-            'depth': 260
+            'depth': 30
         }
     },
     'nw': {
@@ -61,7 +62,7 @@ CONFIG = {
             'hidden_layer_sizes': (140, 3)
         },
         'dt': {
-            'depth': 100
+            'depth': 150
         }
     },
     'ws_w_gc': {
@@ -69,10 +70,10 @@ CONFIG = {
         'vectorizer': 'count',  # ['count', 'tfidf']
         'mlp': {
             'solver': 'adam',  # ['lbfgs', 'sgd', 'adam']
-            'hidden_layer_sizes': (200, 3)
+            'hidden_layer_sizes': (140, 3)
         },
         'dt': {
-            'depth': 100
+            'depth': 260
         }
     }
 }
@@ -336,8 +337,9 @@ def run_models(model=None, dataset=None):
                 print('DT Accuracy: ' + str('{:.4f}'.format(acc)))
             elif current_model == 'mlp':
                 acc, f1 = multilayer_perceptron(
-                    X_train, X_test, y_train, y_test, CONFIG[dataset]['mlp']['hidden_layer_sizes'],
-                    solver=CONFIG[current_dataset]['mlp']['solver']
+                    X_train, X_test, y_train, y_test, CONFIG[current_dataset]['mlp']['hidden_layer_sizes'],
+                    solver=CONFIG[current_dataset]['mlp']['solver'],
+                    current_dataset
                 )
                 print('MLP Accuracy: ' + str('{:.4f}'.format(acc)))
 
@@ -450,10 +452,18 @@ def decision_tree(X_train, X_test, y_train, y_test, depth):
 
 # MultiLayer Perceptron
 
-def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes, solver):
-    mlp = MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, max_iter=2000, solver=solver)
-    mlp.fit(X_train, y_train)
-    y_pred = mlp.predict(X_test)
+def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes, solver, current_dataset):
+    if current_dataset is not None:
+        try:
+            mlp = load(current_dataset + 'mlp_wights.joblib')
+            y_pred = mlp.predict(X_test)
+        except:
+            mlp = MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, max_iter=2000, solver=solver)
+            mlp.fit(X_train, y_train)
+            dump(mlp, 'pca_model.joblib')
+    else:
+        mlp = MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, max_iter=2000, solver=solver)
+        mlp.fit(X_train, y_train)
     return accuracy_score(y_test, y_pred), f1_score(y_test, y_pred, average='macro')
 
 
