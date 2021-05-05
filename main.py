@@ -30,10 +30,10 @@ CONFIG = {
     'stopwords': 'all',  # ['all', 'punctuation', 'none']
     'gc': {
         'filename': 'gc_dataset.csv',
-        'n_words': 3,
+        'n_words': 2,
         'vectorizer': 'count',  # ['count', 'tfidf']
         'mlp': {
-            'solver': 'lbfgs',  # ['lbfgs', 'sgd', 'adam']
+            'solver': 'adam',  # ['lbfgs', 'sgd', 'adam']
             'hidden_layer_sizes': (100,)
         },
         'dt': {
@@ -42,10 +42,10 @@ CONFIG = {
     },
     'nw': {
         'filename': 'nw_dataset.csv',
-        'n_words': 5,
+        'n_words': 4,
         'vectorizer': 'count',  # ['count', 'tfidf']
         'mlp': {
-            'solver': 'lbfgs',  # ['lbfgs', 'sgd', 'adam']
+            'solver': 'adam',  # ['lbfgs', 'sgd', 'adam']
             'hidden_layer_sizes': (100,)
         },
         'dt': {
@@ -56,7 +56,7 @@ CONFIG = {
         'filename': 'ws_dataset.csv',
         'vectorizer': 'count',  # ['count', 'tfidf']
         'mlp': {
-            'solver': 'lbfgs',  # ['lbfgs', 'sgd', 'adam']
+            'solver': 'adam',  # ['lbfgs', 'sgd', 'adam']
             'hidden_layer_sizes': (100,)
         },
         'dt': {
@@ -87,7 +87,7 @@ def print_progress_bar(iteration, total, prefix='', suffix='', decimals=1, lengt
     percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
     filledLength = int(length * iteration // total)
     bar = fill * filledLength + '-' * (length - filledLength)
-    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end=printEnd)
+    print(f'\r{prefix} |{bar}|', end=printEnd)
     # Print New Line on Complete
     if iteration == total:
         print()
@@ -95,15 +95,15 @@ def print_progress_bar(iteration, total, prefix='', suffix='', decimals=1, lengt
 
 # Feature extraction
 
-def generate_datasets(n_words=2):
-    gc_extraction(n_words)
-    nw_extraction(n_words)
+def generate_datasets():
+    gc_extraction()
+    nw_extraction()
     whole_sentence_extraction()
 
 
 # Grammatical classification extraction
 
-def gc_extraction(stopwords=True, extra_stopwords=True, custom_n_words=None):
+def gc_extraction(stopwords=True, extra_stopwords=False, custom_n_words=None):
     if custom_n_words is None:
         n_words = CONFIG['gc']['n_words']
     else:
@@ -281,9 +281,9 @@ def run_models(model=None, dataset=None):
         y = data[0].values
         X = data[1]
         if CONFIG[dataset]['vectorizer'] == 'count':
-            vectorizer = CountVectorizer()
+            vectorizer = CountVectorizer(stop_words='english')
         else:
-            vectorizer = TfidfVectorizer()
+            vectorizer = TfidfVectorizer(stop_words='english', ngram_range=(1, 2))
         X = vectorizer.fit_transform(X)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=0)
         for current_model in models:
@@ -295,7 +295,8 @@ def run_models(model=None, dataset=None):
                 print('DT Accuracy: ' + str('{:.4f}'.format(acc)))
             elif current_model == 'mlp':
                 acc, f1 = multilayer_perceptron(
-                    X_train, X_test, y_train, y_test, CONFIG[dataset]['mlp']['hidden_layer_sizes'], solver=CONFIG[current_dataset]['mlp']['solver']
+                    X_train, X_test, y_train, y_test, CONFIG[dataset]['mlp']['hidden_layer_sizes'],
+                    solver=CONFIG[current_dataset]['mlp']['solver']
                 )
                 print('MLP Accuracy: ' + str('{:.4f}'.format(acc)))
 
@@ -303,12 +304,12 @@ def run_models(model=None, dataset=None):
 # Testing
 
 def test_n_words(n_words_range=(1, 10)):
-    print('Dataset: nw')
-    for i in range(n_words_range[0], n_words_range[1]+1):
+    print('TESTING FOR NW...')
+    for i in range(n_words_range[0], n_words_range[1] + 1):
         nw_extraction(custom_n_words=i)
         run_models(model='nb', dataset='nw')
-    print('Dataset: gc')
-    for i in range(n_words_range[0], n_words_range[1]+1):
+    print('TESTING FOT GC...')
+    for i in range(n_words_range[0], n_words_range[1] + 1):
         gc_extraction(custom_n_words=i)
         run_models(model='nb', dataset='gc')
 
@@ -328,7 +329,7 @@ def test_dt_config(depth_range=(1, 40)):
         if CONFIG[dataset]['vectorizer'] == 'count':
             vectorizer = CountVectorizer(stop_words='english')
         else:
-            vectorizer = TfidfVectorizer(stop_words='english')
+            vectorizer = TfidfVectorizer(stop_words='english', ngram_range=(1, 2))
         X = vectorizer.fit_transform(X)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=0)
         ws.cell(column=current_column, row=1, value=dataset)
@@ -343,46 +344,48 @@ def test_dt_config(depth_range=(1, 40)):
     print('dt_depth_test.xlsx generated')
 
 
-def test_mlp_config(selected_dataset, hidden_layer_range=((40, 1), (140, 5))):
-    wb = Workbook()
-    ws = wb.active
-    current_row = 2
-    for current_layer_size in range(hidden_layer_range[0][0], hidden_layer_range[1][0] + 1):
-        ws.cell(column=1, row=current_row, value=current_layer_size)
-        current_row += 1
-    current_column = 2
+def test_mlp_config(selected_dataset=None, hidden_layer_range=((10, 1), (150, 3))):
     if selected_dataset is None:
         datasets = DATASETS
     else:
         datasets = [selected_dataset]
     for dataset in datasets:
+        wb = Workbook()
+        ws = wb.active
+        current_row = 2
+        current_column = 2
         i = 0
-        l = len(range(hidden_layer_range[0][1], hidden_layer_range[1][1]))*len(range(hidden_layer_range[0][0], int(hidden_layer_range[1][0] / 10) + 1))
-        for current_net_depth in range(hidden_layer_range[0][1], hidden_layer_range[1][1]):
-            print_progress_bar(i + 1, l, prefix='Progress:', suffix='Complete', length=50)
+        l = (
+            len(range(hidden_layer_range[0][1], hidden_layer_range[1][1])) *
+            len(range(hidden_layer_range[0][0], int(hidden_layer_range[1][0]) + 1)
+        ))
+        for current_net_depth in range(hidden_layer_range[0][1], hidden_layer_range[1][1] + 1):
             data = pd.read_csv(CONFIG[dataset]['filename'], header=None)
             y = data[0].values
             X = data[1]
             if CONFIG[dataset]['vectorizer'] == 'count':
                 vectorizer = CountVectorizer(stop_words='english')
             else:
-                vectorizer = TfidfVectorizer(stop_words='english')
+                vectorizer = TfidfVectorizer(stop_words='english', ngram_range=(1, 2))
             X = vectorizer.fit_transform(X)
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=0)
             ws.cell(column=current_column, row=1, value=dataset + ' d=' + str(current_net_depth))
             current_row = 2
-            for current_layer_size in range(hidden_layer_range[0][0], int(hidden_layer_range[1][0] / 10) + 1):
-                acc, f1 = multilayer_perceptron(
-                    X_train, X_test, y_train, y_test, hidden_layer_sizes=[current_layer_size * 10, current_net_depth]
-                )
-                ws.cell(column=current_column, row=current_row, value=current_layer_size)
-                ws.cell(column=current_column, row=current_row, value=acc)
-                current_row += 1
+            for current_layer_size in range(hidden_layer_range[0][0], int(hidden_layer_range[1][0]) + 1):
+                if current_layer_size % 10 == 0:
+                    acc, f1 = multilayer_perceptron(
+                        X_train, X_test, y_train, y_test,
+                        hidden_layer_sizes=[current_layer_size, current_net_depth],
+                        solver=CONFIG[dataset]['mlp']['solver']
+                    )
+                    ws.cell(column=current_column, row=current_row, value=current_layer_size)
+                    ws.cell(column=current_column, row=current_row, value=acc)
+                    ws.cell(column=1, row=current_row, value=current_layer_size)
+                    current_row += 1
                 i += 1
-                print_progress_bar(i + 1, l, prefix='Progress:', suffix='Complete', length=50)
+                print_progress_bar(i + 1, l, prefix='mlp_test_with_' + dataset + '.xlsx', suffix='Complete', length=50)
             current_column += 1
-        wb.save(filename='mlp_depth_test_with_' + dataset + '.xlsx')
-        print('mlp_depth_test_with_' + dataset + '.xlsx')
+        wb.save(filename='mlp_test_with_' + dataset + '.xlsx')
 
 
 # Naive Bayes
@@ -416,4 +419,4 @@ def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes, 
 
 if __name__ == '__main__':
     generate_datasets()
-    test_n_words()
+    test_mlp_config()
