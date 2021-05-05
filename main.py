@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import pandas as pd
 import csv
@@ -24,7 +25,7 @@ test_size = 0.3
 
 # Config
 
-DATASETS = ['gc', 'nw', 'ws']
+DATASETS = ['gc', 'nw', 'ws', 'ws_w_gc']
 MODELS = ['nb', 'dt', 'mlp']
 CONFIG = {
     'stopwords': 'all',  # ['all', 'punctuation', 'none']
@@ -46,7 +47,7 @@ CONFIG = {
         'vectorizer': 'count',  # ['count', 'tfidf']
         'mlp': {
             'solver': 'adam',  # ['lbfgs', 'sgd', 'adam']
-            'hidden_layer_sizes': (100,)
+            'hidden_layer_sizes': (50, 3)
         },
         'dt': {
             'depth': 100
@@ -63,8 +64,16 @@ CONFIG = {
             'depth': 100
         }
     },
-    'custom': {
-
+    'ws_w_gc': {
+        'filename': 'ws_w_gc_dataset.csv',
+        'vectorizer': 'count',  # ['count', 'tfidf']
+        'mlp': {
+            'solver': 'adam',  # ['lbfgs', 'sgd', 'adam']
+            'hidden_layer_sizes': (100,)
+        },
+        'dt': {
+            'depth': 100
+        }
     }
 }
 
@@ -96,9 +105,11 @@ def print_progress_bar(iteration, total, prefix='', suffix='', decimals=1, lengt
 # Feature extraction
 
 def generate_datasets():
+    print('GENERATING DATASETS...')
     gc_extraction()
     nw_extraction()
     whole_sentence_extraction()
+    ws_with_gc_extraction()
 
 
 # Grammatical classification extraction
@@ -257,10 +268,40 @@ def whole_sentence_extraction(punctuation_stopwords=True):
     print(CONFIG['ws']['filename'] + ' generated')
 
 
-# TF-IDF + GC
+# WS + GC
 
-def tfidf_gc_extraction():
-    pass
+def ws_with_gc_extraction(punctuation_stopwords=True):
+    data = []
+    with open('interest.acl94.txt') as file:
+        lines = file.readlines()
+    separator = lines[1]
+    lines.remove(separator)
+    for line in lines:
+        line = line.replace('======================================', '')
+        line = line.replace('/', ' ')
+        tk_line = word_tokenize(line)
+        target_word_found = False
+        if punctuation_stopwords:
+            for stopword in PUNCTUATION_STOPWORDS:
+                line = line.replace(stopword, '')
+        for i in range(len(tk_line)):
+            if tk_line[i].find('interest_') == 0:
+                category = 'C' + tk_line[i][9:10]
+                line = line.replace(tk_line[i], 'interest')
+                target_word_found = True
+                break
+            elif tk_line[i].find('interests_') == 0:
+                category = 'C' + tk_line[i][10:11]
+                line = line.replace(tk_line[i], 'interests')
+                target_word_found = True
+                break
+        if target_word_found:
+            line = [category, line]
+            data.append(line)
+    with open(CONFIG['ws_w_gc']['filename'], 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerows(data)
+    print(CONFIG['ws_w_gc']['filename'] + ' generated')
 
 
 # Running
@@ -418,5 +459,5 @@ def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes, 
 # Main routine
 
 if __name__ == '__main__':
+    args = sys.argv[1:]
     generate_datasets()
-    test_mlp_config()
