@@ -21,14 +21,14 @@ CATEGORIES_STOPWORDS_EXTRA = ['/IN', '/DT', '/CC']
 PUNCTUATION_STOPWORDS = ['.', ',', '[', ']', '(', ')', '\n', "'", "''", '``', ':', ';', '{', '}']
 ENGLISH_STOPWORDS = []
 test_size = 0.3
-n_words = 2
 
 DATASETS = ['gc', 'nw', 'ws']
-
+MODELS = ['nb', 'dt', 'mlp']
 CONFIG = {
     'stopwords': 'all',  # ['all', 'punctuation', 'none']
     'gc': {
         'filename': 'gc_dataset.csv',
+        'n_words': 3,
         'vectorizer': 'count',  # ['count', 'tfidf']
         'mlp': {
             'solver': 'lbfgs',  # ['lbfgs', 'sgd', 'adam']
@@ -40,6 +40,7 @@ CONFIG = {
     },
     'nw': {
         'filename': 'nw_dataset.csv',
+        'n_words': 5,
         'vectorizer': 'count',  # ['count', 'tfidf']
         'mlp': {
             'solver': 'lbfgs',  # ['lbfgs', 'sgd', 'adam']
@@ -93,15 +94,19 @@ def print_progress_bar(iteration, total, prefix='', suffix='', decimals=1, lengt
 
 # Feature extraction
 
-def generate_datasets():
-    gc_extraction()
-    nw_extraction()
+def generate_datasets(n_words=2):
+    gc_extraction(n_words)
+    nw_extraction(n_words)
     whole_sentence_extraction()
 
 
 # Grammatical classification extraction
 
-def gc_extraction(stopwords=True, extra_stopwords=False):
+def gc_extraction(stopwords=True, extra_stopwords=False, custom_n_words=None):
+    if custom_n_words is None:
+        n_words = CONFIG['gc']['n_words']
+    else:
+        n_words = custom_n_words
     data = []
     with open('interest.acl94.txt') as file:
         lines = file.readlines()
@@ -153,8 +158,8 @@ def gc_extraction(stopwords=True, extra_stopwords=False):
                     line[i] = line[i].split('/')[1]
                 except:
                     line[i] = 'VOID'
-            line = [' '.join(line)]
-            line.insert(0, category)
+            line = ' '.join(line)
+            line = [category, line]
             data.append(line)
     with open(CONFIG['gc']['filename'], 'w', newline='') as file:
         writer = csv.writer(file)
@@ -164,7 +169,11 @@ def gc_extraction(stopwords=True, extra_stopwords=False):
 
 # Natural words extraction
 
-def nw_extraction(punctuation_stopwords=True):
+def nw_extraction(punctuation_stopwords=False, custom_n_words=None):
+    if custom_n_words is None:
+        n_words = CONFIG['gc']['n_words']
+    else:
+        n_words = custom_n_words
     data = []
     with open('interest-original.txt') as file:
         lines = file.readlines()
@@ -201,7 +210,8 @@ def nw_extraction(punctuation_stopwords=True):
             elif not line[i].isalpha():
                 line[i] = 'NUM'
         if target_word_found:
-            line.insert(0, category)
+            line = ' '.join(line)
+            line = [category, line]
             data.append(line)
     with open(CONFIG['nw']['filename'], 'w', newline='') as file:
         writer = csv.writer(file)
@@ -247,25 +257,46 @@ def tfidf_gc_extraction():
     pass
 
 
-# Test routine
+# Running
 
-def run_all_models(dataset):
-    stopwords = CONFIG['stopwords']
-    data = pd.read_csv(CONFIG[dataset]['filename'], header=None)
-    y = data[0].values
-    X = data[1]
-    if CONFIG[dataset]['vectorizer'] == 'count':
-        vectorizer = CountVectorizer(stop_words='english')
+def run_models(model=None, dataset=None):
+    print('RUNNING MODELS...')
+    if dataset is None:
+        datasets = DATASETS
     else:
-        vectorizer = TfidfVectorizer(stop_words='english')
-    X = vectorizer.fit_transform(X)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=0)
-    acc, f1 = naive_bayes(X_train, X_test, y_train, y_test)
-    print('NB Accuracy: ' + str('{:.4f}'.format(acc)))
-    acc, f1 = decision_tree(X_train, X_test, y_train, y_test, CONFIG[dataset]['dt']['depth'])
-    print('DT Accuracy: ' + str('{:.4f}'.format(acc)))
-    acc, f1 = multilayer_perceptron(X_train, X_test, y_train, y_test, CONFIG[dataset]['mlp']['hidden_layer_sizes'])
-    print('MLP Accuracy: ' + str('{:.4f}'.format(acc)))
+        datasets = [dataset]
+    if model is None:
+        models = MODELS
+    else:
+        models = [model]
+    for current_dataset in datasets:
+        data = pd.read_csv(CONFIG[dataset]['filename'], header=None)
+        print('Dataset: ' + current_dataset)
+        y = data[0].values
+        X = data[1]
+        if CONFIG[dataset]['vectorizer'] == 'count':
+            vectorizer = CountVectorizer()
+        else:
+            vectorizer = TfidfVectorizer()
+        X = vectorizer.fit_transform(X)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=0)
+        for current_model in models:
+            if current_model == 'nb':
+                acc, f1 = naive_bayes(X_train, X_test, y_train, y_test)
+                print('NB Accuracy: ' + str('{:.4f}'.format(acc)))
+            elif current_model == 'dt':
+                acc, f1 = decision_tree(X_train, X_test, y_train, y_test, CONFIG[dataset]['dt']['depth'])
+                print('DT Accuracy: ' + str('{:.4f}'.format(acc)))
+            elif current_model == 'mlp':
+                acc, f1 = multilayer_perceptron(X_train, X_test, y_train, y_test, CONFIG[dataset]['mlp']['hidden_layer_sizes'])
+                print('MLP Accuracy: ' + str('{:.4f}'.format(acc)))
+
+
+# Testing
+
+
+def test_n_words():
+
 
 
 def test_dt_config(depth_range=(1, 40)):
@@ -291,14 +322,14 @@ def test_dt_config(depth_range=(1, 40)):
         for current_depth in range(depth_range[0], depth_range[1] + 1):
             acc, f1 = decision_tree(X_train, X_test, y_train, y_test, current_depth)
             ws.cell(column=current_column, row=current_row, value=current_depth)
-            ws.cell(column=current_column, row=current_row, value=1 - acc)
+            ws.cell(column=current_column, row=current_row, value=acc)
             current_row += 1
         current_column += 1
     wb.save(filename='dt_depth_test.xlsx')
     print('dt_depth_test.xlsx generated')
 
 
-def test_mlp_config(hidden_layer_range=((1, 1), (100, 5))):
+def test_mlp_config(selected_dataset, hidden_layer_range=((40, 1), (140, 5))):
     wb = Workbook()
     ws = wb.active
     current_row = 2
@@ -306,8 +337,11 @@ def test_mlp_config(hidden_layer_range=((1, 1), (100, 5))):
         ws.cell(column=1, row=current_row, value=current_layer_size)
         current_row += 1
     current_column = 2
-    for dataset in DATASETS:
-        print('Training with ' + dataset)
+    if selected_dataset is None:
+        datasets = DATASETS
+    else:
+        datasets = [selected_dataset]
+    for dataset in datasets:
         i = 0
         l = len(range(hidden_layer_range[0][1], hidden_layer_range[1][1]))*len(range(hidden_layer_range[0][0], int(hidden_layer_range[1][0] / 10) + 1))
         for current_net_depth in range(hidden_layer_range[0][1], hidden_layer_range[1][1]):
@@ -328,13 +362,13 @@ def test_mlp_config(hidden_layer_range=((1, 1), (100, 5))):
                     X_train, X_test, y_train, y_test, hidden_layer_sizes=[current_layer_size * 10, current_net_depth]
                 )
                 ws.cell(column=current_column, row=current_row, value=current_layer_size)
-                ws.cell(column=current_column, row=current_row, value=1 - acc)
+                ws.cell(column=current_column, row=current_row, value=acc)
                 current_row += 1
                 i += 1
                 print_progress_bar(i + 1, l, prefix='Progress:', suffix='Complete', length=50)
             current_column += 1
-    wb.save(filename='dt_depth_test.xlsx')
-    print('dt_depth_test.xlsx generated')
+        wb.save(filename='mlp_depth_test_with_' + dataset + '.xlsx')
+        print('mlp_depth_test_with_' + dataset + '.xlsx')
 
 
 # Naive Bayes
@@ -367,12 +401,4 @@ def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes):
 # Main routine
 
 if __name__ == '__main__':
-    # generate_datasets()
-    test_dt_config()
-    test_mlp_config()
-    print('BOW')
-    run_all_models('nw')
-    print('GC')
-    run_all_models('gc')
-    print('auto')
-    run_all_models('ws')
+    generate_datasets()
