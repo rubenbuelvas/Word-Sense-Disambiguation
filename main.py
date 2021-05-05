@@ -22,6 +22,8 @@ PUNCTUATION_STOPWORDS = ['.', ',', '[', ']', '(', ')', '\n', "'", "''", '``', ':
 ENGLISH_STOPWORDS = []
 test_size = 0.3
 
+# Config
+
 DATASETS = ['gc', 'nw', 'ws']
 MODELS = ['nb', 'dt', 'mlp']
 CONFIG = {
@@ -69,7 +71,6 @@ CONFIG = {
 
 # Utilities
 
-# Print iterations progress
 def print_progress_bar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', printEnd="\r"):
     """
     Call in a loop to create terminal progress bar
@@ -102,7 +103,7 @@ def generate_datasets(n_words=2):
 
 # Grammatical classification extraction
 
-def gc_extraction(stopwords=True, extra_stopwords=False, custom_n_words=None):
+def gc_extraction(stopwords=True, extra_stopwords=True, custom_n_words=None):
     if custom_n_words is None:
         n_words = CONFIG['gc']['n_words']
     else:
@@ -294,9 +295,15 @@ def run_models(model=None, dataset=None):
 
 # Testing
 
-
-def test_n_words():
-
+def test_n_words(n_words_range=(1, 10)):
+    print('Dataset: nw')
+    for i in range(n_words_range[0], n_words_range[1]+1):
+        nw_extraction(custom_n_words=i)
+        run_models(model='nb', dataset='nw')
+    print('Dataset: gc')
+    for i in range(n_words_range[0], n_words_range[1]+1):
+        gc_extraction(custom_n_words=i)
+        run_models(model='nb', dataset='gc')
 
 
 def test_dt_config(depth_range=(1, 40)):
@@ -401,4 +408,4 @@ def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes):
 # Main routine
 
 if __name__ == '__main__':
-    generate_datasets()
+    test_n_words()
