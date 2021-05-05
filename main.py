@@ -452,18 +452,18 @@ def decision_tree(X_train, X_test, y_train, y_test, depth):
 
 # MultiLayer Perceptron
 
-def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes, solver, dataset):
+def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes, solver, dataset=None):
     if dataset is not None:
         try:
-            mlp = load(dataset + 'mlp_wights.joblib')
-            y_pred = mlp.predict(X_test)
+            mlp = load(dataset + '_mlp_weights.joblib')
         except:
             mlp = MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, max_iter=2000, solver=solver)
             mlp.fit(X_train, y_train)
-            dump(mlp, 'pca_model.joblib')
+            dump(mlp, dataset + '_mlp_weights.joblib')
     else:
         mlp = MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, max_iter=2000, solver=solver)
         mlp.fit(X_train, y_train)
+    y_pred = mlp.predict(X_test)
     return accuracy_score(y_test, y_pred), f1_score(y_test, y_pred, average='macro')
 
 
