@@ -317,11 +317,11 @@ def run_models(model=None, dataset=None):
     else:
         models = [model]
     for current_dataset in datasets:
-        data = pd.read_csv(CONFIG[dataset]['filename'], header=None)
+        data = pd.read_csv(CONFIG[current_dataset]['filename'], header=None)
         print('Dataset: ' + current_dataset)
         y = data[0].values
         X = data[1]
-        if CONFIG[dataset]['vectorizer'] == 'count':
+        if CONFIG[current_dataset]['vectorizer'] == 'count':
             vectorizer = CountVectorizer(stop_words='english')
         else:
             vectorizer = TfidfVectorizer(stop_words='english', ngram_range=(1, 2))
@@ -368,9 +368,9 @@ def test_dt_config(depth_range=(1, 40)):
         y = data[0].values
         X = data[1]
         if CONFIG[dataset]['vectorizer'] == 'count':
-            vectorizer = CountVectorizer(stop_words='english')
+            vectorizer = CountVectorizer(stop_words='english', ngram_range=(1, 2))
         else:
-            vectorizer = TfidfVectorizer(stop_words='english', ngram_range=(1, 2))
+            vectorizer = TfidfVectorizer(stop_words='english', ngram_range=(2, 2))
         X = vectorizer.fit_transform(X)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=0)
         ws.cell(column=current_column, row=1, value=dataset)
@@ -460,4 +460,4 @@ def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes, 
 
 if __name__ == '__main__':
     args = sys.argv[1:]
-    generate_datasets()
+    run_models(model='nb')
