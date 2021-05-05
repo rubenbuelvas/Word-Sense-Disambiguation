@@ -35,7 +35,7 @@ CONFIG = {
         'vectorizer': 'count',  # ['count', 'tfidf']
         'mlp': {
             'solver': 'adam',  # ['lbfgs', 'sgd', 'adam']
-            'hidden_layer_sizes': (100,)
+            'hidden_layer_sizes': (80, 3)
         },
         'dt': {
             'depth': 100
@@ -58,7 +58,7 @@ CONFIG = {
         'vectorizer': 'count',  # ['count', 'tfidf']
         'mlp': {
             'solver': 'adam',  # ['lbfgs', 'sgd', 'adam']
-            'hidden_layer_sizes': (100,)
+            'hidden_layer_sizes': (140, 3)
         },
         'dt': {
             'depth': 100
@@ -355,13 +355,11 @@ def test_n_words(n_words_range=(1, 10)):
         run_models(model='nb', dataset='gc')
 
 
-def test_dt_config(depth_range=(1, 40)):
+def test_dt_config(depth_range=(5, 500)):
+    print('TESTING DT CONFIG...')
     wb = Workbook()
     ws = wb.active
     current_row = 2
-    for current_depth in range(depth_range[0], depth_range[1] + 1):
-        ws.cell(column=1, row=current_row, value=current_depth)
-        current_row += 1
     current_column = 2
     for dataset in DATASETS:
         data = pd.read_csv(CONFIG[dataset]['filename'], header=None)
@@ -376,16 +374,19 @@ def test_dt_config(depth_range=(1, 40)):
         ws.cell(column=current_column, row=1, value=dataset)
         current_row = 2
         for current_depth in range(depth_range[0], depth_range[1] + 1):
-            acc, f1 = decision_tree(X_train, X_test, y_train, y_test, current_depth)
-            ws.cell(column=current_column, row=current_row, value=current_depth)
-            ws.cell(column=current_column, row=current_row, value=acc)
-            current_row += 1
+            if current_depth % 10 == 0:
+                acc, f1 = decision_tree(X_train, X_test, y_train, y_test, current_depth)
+                ws.cell(column=current_column, row=current_row, value=current_depth)
+                ws.cell(column=current_column, row=current_row, value=acc)
+                ws.cell(column=1, row=current_row, value=current_depth)
+                current_row += 1
         current_column += 1
     wb.save(filename='dt_depth_test.xlsx')
     print('dt_depth_test.xlsx generated')
 
 
 def test_mlp_config(selected_dataset=None, hidden_layer_range=((10, 1), (150, 3))):
+    print('TESTING MLP CONFIG...')
     if selected_dataset is None:
         datasets = DATASETS
     else:
@@ -413,7 +414,7 @@ def test_mlp_config(selected_dataset=None, hidden_layer_range=((10, 1), (150, 3)
             ws.cell(column=current_column, row=1, value=dataset + ' d=' + str(current_net_depth))
             current_row = 2
             for current_layer_size in range(hidden_layer_range[0][0], int(hidden_layer_range[1][0]) + 1):
-                if current_layer_size % 10 == 0:
+                if current_layer_size % 20 == 0:
                     acc, f1 = multilayer_perceptron(
                         X_train, X_test, y_train, y_test,
                         hidden_layer_sizes=[current_layer_size, current_net_depth],
@@ -459,5 +460,5 @@ def multilayer_perceptron(X_train, X_test, y_train, y_test, hidden_layer_sizes, 
 # Main routine
 
 if __name__ == '__main__':
-    args = sys.argv[1:]
-    run_models(model='nb')
+    generate_datasets()
+    test_dt_config()
