@@ -38,7 +38,7 @@ CONFIG = {
             'hidden_layer_sizes': (80, 3)
         },
         'dt': {
-            'depth': 100
+            'depth': 260
         }
     },
     'nw': {
@@ -50,7 +50,7 @@ CONFIG = {
             'hidden_layer_sizes': (50, 3)
         },
         'dt': {
-            'depth': 100
+            'depth': 260
         }
     },
     'ws': {
@@ -69,7 +69,7 @@ CONFIG = {
         'vectorizer': 'count',  # ['count', 'tfidf']
         'mlp': {
             'solver': 'adam',  # ['lbfgs', 'sgd', 'adam']
-            'hidden_layer_sizes': (100,)
+            'hidden_layer_sizes': (200, 3)
         },
         'dt': {
             'depth': 100
@@ -322,9 +322,9 @@ def run_models(model=None, dataset=None):
         y = data[0].values
         X = data[1]
         if CONFIG[current_dataset]['vectorizer'] == 'count':
-            vectorizer = CountVectorizer(stop_words='english')
+            vectorizer = CountVectorizer(ngram_range=(1, 2))
         else:
-            vectorizer = TfidfVectorizer(stop_words='english', ngram_range=(1, 2))
+            vectorizer = TfidfVectorizer(ngram_range=(1, 2))
         X = vectorizer.fit_transform(X)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=0)
         for current_model in models:
