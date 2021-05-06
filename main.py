@@ -36,7 +36,7 @@ CONFIG = {
         'vectorizer': 'count',  # ['count', 'tfidf']
         'mlp': {
             'solver': 'adam',  # ['lbfgs', 'sgd', 'adam']
-            'hidden_layer_sizes': (80, 3)
+            'hidden_layer_sizes': (40,)
         },
         'dt': {
             'depth': 30
@@ -48,7 +48,7 @@ CONFIG = {
         'vectorizer': 'count',  # ['count', 'tfidf']
         'mlp': {
             'solver': 'adam',  # ['lbfgs', 'sgd', 'adam']
-            'hidden_layer_sizes': (50, 3)
+            'hidden_layer_sizes': (50,)
         },
         'dt': {
             'depth': 260
@@ -59,7 +59,7 @@ CONFIG = {
         'vectorizer': 'count',  # ['count', 'tfidf']
         'mlp': {
             'solver': 'adam',  # ['lbfgs', 'sgd', 'adam']
-            'hidden_layer_sizes': (140, 3)
+            'hidden_layer_sizes': (50,)
         },
         'dt': {
             'depth': 150
@@ -70,7 +70,7 @@ CONFIG = {
         'vectorizer': 'count',  # ['count', 'tfidf']
         'mlp': {
             'solver': 'adam',  # ['lbfgs', 'sgd', 'adam']
-            'hidden_layer_sizes': (140, 3)
+            'hidden_layer_sizes': (50,)
         },
         'dt': {
             'depth': 260
@@ -387,23 +387,21 @@ def test_dt_config(depth_range=(5, 500)):
     print('dt_depth_test.xlsx generated')
 
 
-def test_mlp_config(selected_dataset=None, hidden_layer_range=((10, 1), (150, 3))):
+def test_mlp_config(selected_dataset=None, hidden_layer_range=(20, 100)):
     print('TESTING MLP CONFIG...')
+    wb = Workbook()
+    ws = wb.active
     if selected_dataset is None:
         datasets = DATASETS
     else:
         datasets = [selected_dataset]
+    current_column = 2
     for dataset in datasets:
-        wb = Workbook()
-        ws = wb.active
-        current_row = 2
-        current_column = 2
         i = 0
-        l = (
-            len(range(hidden_layer_range[0][1], hidden_layer_range[1][1])) *
-            len(range(hidden_layer_range[0][0], int(hidden_layer_range[1][0]) + 1)
-        ))
-        for current_net_depth in range(hidden_layer_range[0][1], hidden_layer_range[1][1] + 1):
+        l = len(range(hidden_layer_range[0], hidden_layer_range[1]))
+        ws.cell(column=current_column, row=1, value=dataset)
+        current_row = 2
+        for current_layer_size in range(hidden_layer_range[0], hidden_layer_range[1] + 1):
             data = pd.read_csv(CONFIG[dataset]['filename'], header=None)
             y = data[0].values
             X = data[1]
@@ -413,23 +411,22 @@ def test_mlp_config(selected_dataset=None, hidden_layer_range=((10, 1), (150, 3)
                 vectorizer = TfidfVectorizer(stop_words='english', ngram_range=(1, 2))
             X = vectorizer.fit_transform(X)
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=0)
-            ws.cell(column=current_column, row=1, value=dataset + ' d=' + str(current_net_depth))
-            current_row = 2
-            for current_layer_size in range(hidden_layer_range[0][0], int(hidden_layer_range[1][0]) + 1):
-                if current_layer_size % 20 == 0:
-                    acc, f1 = multilayer_perceptron(
-                        X_train, X_test, y_train, y_test,
-                        hidden_layer_sizes=[current_layer_size, current_net_depth],
-                        solver=CONFIG[dataset]['mlp']['solver']
-                    )
-                    ws.cell(column=current_column, row=current_row, value=current_layer_size)
-                    ws.cell(column=current_column, row=current_row, value=acc)
-                    ws.cell(column=1, row=current_row, value=current_layer_size)
-                    current_row += 1
-                i += 1
-                print_progress_bar(i + 1, l, prefix='mlp_test_with_' + dataset + '.xlsx', suffix='Complete', length=50)
-            current_column += 1
-        wb.save(filename='mlp_test_with_' + dataset + '.xlsx')
+            if current_layer_size % 10 == 0:
+                acc, f1 = multilayer_perceptron(
+                    X_train, X_test, y_train, y_test,
+                    hidden_layer_sizes=(current_layer_size, ),
+                    solver=CONFIG[dataset]['mlp']['solver']
+                )
+                ws.cell(column=current_column, row=current_row, value=current_layer_size)
+                ws.cell(column=current_column, row=current_row, value=acc)
+                ws.cell(column=1, row=current_row, value=current_layer_size)
+                current_row += 1
+            i += 1
+            print_progress_bar(i, l, prefix=dataset, suffix='Complete', length=50)
+        current_column += 1
+    wb.save(filename='mlp_size_test.xlsx')
+    print()
+    print('mlp_size_test.xlsx generated')
 
 
 # Naive Bayes
