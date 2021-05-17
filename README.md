@@ -4,7 +4,9 @@ Word Sense Disambiguation
 Rubén Buelvas
 
 Université de Montréal
+
 IFT 3335 - Artificial Intelligence
+
 Winter 2021
 
 *Python Version 3.0+*
