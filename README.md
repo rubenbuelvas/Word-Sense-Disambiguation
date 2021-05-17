@@ -9,6 +9,10 @@ Université de Montréal - IFT 3335 Artificial Intelligence - Winter 2021
 
 All functionality is contained in the main.py file. The list of requirements can be found in the file requeriments.txt.
 
+Introduction
+----------------------------
+
+The Word Sense Disambiguation problem is an NLP problem that consists of finding the correct definition of a word given a context. For this project, the target word was “interest”. 6 definitions were given in a text with and without POS tags. Different datasets were created, tested, and used with AI models that were also tested with different configurations. The work consisted mainly of two phases: feature extraction and model training.
 
 Generate datasets
 ----------------------------
